@@ -624,4 +624,70 @@ class ConstraintViolationExceptionMapperTest {
             this.data = data;
         }
     }
+
+    /**
+     * Verifies that configure() and toProblem() are atomic: no request can ever see a status from one
+     * configure() call paired with a title from another configure() call.
+     */
+    @Test
+    void configurationIsAlwaysReadAtomically() throws InterruptedException {
+        final int iterations = 10_000;
+        final ConstraintViolationExceptionMapper testMapper = new ConstraintViolationExceptionMapper();
+        final ConstraintViolationException exception = new ConstraintViolationException("test", null);
+
+        final java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
+        final java.util.concurrent.CountDownLatch doneLatch = new java.util.concurrent.CountDownLatch(2);
+        final java.util.List<HttpValidationProblem> results = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+        // Writer thread: alternates between two consistent (status, title) pairs
+        Thread writer = new Thread(() -> {
+            try {
+                startLatch.await();
+                for (int i = 0; i < iterations; i++) {
+                    if (i % 2 == 0) {
+                        ConstraintViolationExceptionMapper.configure(422, "Constraint violation");
+                    } else {
+                        ConstraintViolationExceptionMapper.configure(400, "Bad Request");
+                    }
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        // Reader thread: calls toProblem() and collects results
+        Thread reader = new Thread(() -> {
+            try {
+                startLatch.await();
+                for (int i = 0; i < iterations; i++) {
+                    results.add(testMapper.toProblem(exception));
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        writer.start();
+        reader.start();
+        startLatch.countDown(); // release both threads at the same instant
+        doneLatch.await();
+
+        // Reset to default so other tests are unaffected
+        ConstraintViolationExceptionMapper.configure(400, "Bad Request");
+
+        // Every result must have a self-consistent (status, title) pair — never a torn read
+        for (HttpValidationProblem problem : results) {
+            int status = problem.getStatusCode();
+            String actualTitle = problem.getTitle();
+            boolean isDefaultPair = status == 400 && "Bad Request".equals(actualTitle);
+            boolean isCustomPair = status == 422 && "Constraint violation".equals(actualTitle);
+            assertThat(isDefaultPair || isCustomPair)
+                    .as("Torn read detected: status=%d title='%s'", status, actualTitle)
+                    .isTrue();
+        }
+    }
 }
