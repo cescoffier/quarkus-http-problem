@@ -54,20 +54,25 @@ public final class ConstraintViolationExceptionMapper extends ExceptionMapperBas
             .flatMap(Optional::stream)
             .toList();
 
-    private static int problemStatus = 400;
-    private static String problemTitle = "Bad Request";
+    private record ConstraintViolationConfig(int status, String title) {
+        // Create a record to store immutable data.
+    }
+
+    private static volatile ConstraintViolationConfig DEFAULT = new ConstraintViolationConfig(400, "Bad Request");
 
     @Context
     ResourceInfo resourceInfo;
 
+    // Called from the recorder, only once.
     public static void configure(int status, String title) {
-        ConstraintViolationExceptionMapper.problemStatus = status;
-        ConstraintViolationExceptionMapper.problemTitle = title;
+        DEFAULT = new ConstraintViolationConfig(status, title);
     }
 
     @Override
     protected HttpValidationProblem toProblem(ConstraintViolationException exception) {
-        return new HttpValidationProblem(problemStatus, problemTitle, toViolations(exception.getConstraintViolations()));
+        ConstraintViolationConfig config = DEFAULT; // single volatile read
+        return new HttpValidationProblem(config.status(), config.title(),
+                toViolations(exception.getConstraintViolations()));
     }
 
     private List<Violation> toViolations(Set<ConstraintViolation<?>> constraintViolations) {
