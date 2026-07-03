@@ -43,4 +43,23 @@ class RestClientIT {
                 .body("instance", equalTo("/throw-via-rest-client-with-mapper"));
     }
 
+    @Test
+    void shouldNotCrashWhenUpstreamReturnsMalformedProblemBody() {
+        given()
+                .accept(ContentType.JSON)
+                .get("/throw-via-rest-client-with-mapper-malformed")
+                .then()
+                .statusCode(409); 
+    }
+
+    @Test
+    void shouldRethrowHttpProblemWhenContentTypeHasCharsetParameter() {    
+        given()
+                .accept(ContentType.JSON)
+                .get("/throw-via-rest-client-with-mapper-charset")
+                .then()
+                .statusCode(409)
+                .body("title", equalTo("Conflict from upstream service"));
+    }
+
 }

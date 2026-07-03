@@ -1,8 +1,10 @@
 package io.quarkiverse.httpproblem.client;
 
+import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 
 import org.eclipse.microprofile.rest.client.ext.ResponseExceptionMapper;
+import org.jboss.logging.Logger;
 
 import io.quarkiverse.httpproblem.HttpProblem;
 
@@ -13,18 +15,37 @@ import io.quarkiverse.httpproblem.HttpProblem;
  */
 public class ThrowingHttpProblemClientExceptionMapper implements ResponseExceptionMapper<RuntimeException> {
 
+    private static final Logger log = Logger.getLogger(ThrowingHttpProblemClientExceptionMapper.class);
+
     @Override
     public RuntimeException toThrowable(Response response) {
-        if (!HttpProblem.MEDIA_TYPE.isCompatible(response.getMediaType())) { // TODO add tests here where UTF+8 is appended to respons
+        if (!isProblemMediaType(response.getMediaType())) {
             return null; // Let others handle non-problem formats
         }
 
-        HttpProblem returnedProblem = response.readEntity(HttpProblem.class);
+        try {
+            HttpProblem returnedProblem = response.readEntity(HttpProblem.class);
+            // instance must be nullified, otherwise it will be propagated as-is
+            return HttpProblem.builder(returnedProblem)
+                    .withInstance(null)
+                    .build();
+        } catch (Exception e) {
+            log.debug("Failed to deserialize application/problem+json response body", e);
+            return null; // Let others handle unreadable responses
+        }
+    }
 
-        // instance must be nullified, otherwise it will be propagated as-is
-        return HttpProblem.builder(returnedProblem)
-                .withInstance(null)
-                .build();
+    /**
+     * Checks type and subtype only, ignoring parameters such as {@code charset=UTF-8}.
+     * {@link MediaType#isCompatible(MediaType)} also checks parameters, which causes it to reject
+     * {@code application/problem+json; charset=UTF-8} even though it is the same media type.
+     */
+    private static boolean isProblemMediaType(MediaType mediaType) {
+        if (mediaType == null) {
+            return false;
+        }
+        return HttpProblem.MEDIA_TYPE.getType().equalsIgnoreCase(mediaType.getType())
+                && HttpProblem.MEDIA_TYPE.getSubtype().equalsIgnoreCase(mediaType.getSubtype());
     }
 
 }
