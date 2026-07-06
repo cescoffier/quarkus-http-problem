@@ -5,7 +5,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -18,6 +17,7 @@ import com.fasterxml.jackson.core.JsonGenerator;
 
 import io.quarkiverse.httpproblem.HttpProblem;
 import io.quarkiverse.httpproblem.HttpProblemMother;
+import io.quarkiverse.httpproblem.InstanceUtils;
 
 class JacksonProblemSerializerTest {
 
@@ -55,17 +55,17 @@ class JacksonProblemSerializerTest {
     }
 
     @Test
-    @DisplayName("Should decode uri for instance field")
-    void shouldDecodeUriForInstanceField() throws IOException {
+    @DisplayName("Should produce valid URI reference for instance field")
+    void shouldProduceValidUriReferenceForInstanceField() throws IOException {
         HttpProblem problem = HttpProblem.builder()
                 .withStatus(NOT_FOUND)
-                .withInstance(URI.create("%2Fnon%7Cexisting%7Bpath+%2Fwith%7Bunwise%5Ccharacters%3E%23"))
+                .withInstance(InstanceUtils.pathToInstance("/non|existing{path /with{unwise\\characters>#"))
                 .build();
 
         serializer.serialize(problem, jsonGenerator, null);
 
-        assertThat(serializedProblem()).contains("""
-                "instance":"/non|existing{path /with{unwise\\\\characters>#"}""");
+        assertThat(serializedProblem()).contains(
+                "\"instance\":\"/non%7Cexisting%7Bpath%20/with%7Bunwise%5Ccharacters%3E%23\"");
     }
 
     private String serializedProblem() throws IOException {
