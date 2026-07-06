@@ -59,8 +59,6 @@ public class ProblemProcessor {
                         .thatHandles("jakarta.ws.rs.ForbiddenException"),
                 mapper(EXTENSION_MAIN_PACKAGE + "jaxrs.NotFoundExceptionMapper")
                         .thatHandles("jakarta.ws.rs.NotFoundException"),
-                mapper(EXTENSION_MAIN_PACKAGE + "jsonb.RestEasyClassicJsonbExceptionMapper")
-                        .thatHandles("jakarta.ws.rs.ProcessingException"),
 
                 mapper(EXTENSION_MAIN_PACKAGE + "security.UnauthorizedExceptionMapper")
                         .thatHandles("io.quarkus.security.UnauthorizedException").onlyIf(new RestEasyClassicDetector()),
