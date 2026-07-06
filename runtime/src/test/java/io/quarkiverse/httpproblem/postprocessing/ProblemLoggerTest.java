@@ -3,7 +3,10 @@ package io.quarkiverse.httpproblem.postprocessing;
 import static io.quarkiverse.httpproblem.postprocessing.ProblemContextMother.simpleContext;
 import static jakarta.ws.rs.core.Response.Status.BAD_REQUEST;
 import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -66,6 +69,52 @@ class ProblemLoggerTest {
         processor.apply(problem, ProblemContextMother.withCause(cause));
 
         verify(logger).error("status=500, title=\"my fault\"", cause);
+    }
+
+    @Test
+    void shouldLog4xxAtInfoWhenErrorIsDisabled() {
+        when(logger.isErrorEnabled()).thenReturn(false);
+        when(logger.isInfoEnabled()).thenReturn(true);
+
+        HttpProblem problem = HttpProblem.builder()
+                .withTitle("your fault")
+                .withStatus(BAD_REQUEST)
+                .build();
+
+        processor.apply(problem, simpleContext());
+
+        verify(logger).info("status=400, title=\"your fault\"");
+    }
+
+    @Test
+    void shouldNotLog4xxWhenInfoIsDisabled() {
+        when(logger.isErrorEnabled()).thenReturn(true);
+        when(logger.isInfoEnabled()).thenReturn(false);
+
+        HttpProblem problem = HttpProblem.builder()
+                .withTitle("your fault")
+                .withStatus(BAD_REQUEST)
+                .build();
+
+        processor.apply(problem, simpleContext());
+
+        verify(logger, never()).info(anyString());
+    }
+
+    @Test
+    void shouldNotLog5xxWhenErrorIsDisabled() {
+        when(logger.isErrorEnabled()).thenReturn(false);
+        when(logger.isInfoEnabled()).thenReturn(true);
+
+        HttpProblem problem = HttpProblem.builder()
+                .withTitle("my fault")
+                .withStatus(INTERNAL_SERVER_ERROR)
+                .build();
+        RuntimeException cause = new RuntimeException("hey");
+
+        processor.apply(problem, ProblemContextMother.withCause(cause));
+
+        verify(logger, never()).error(anyString(), any(Throwable.class));
     }
 
 }

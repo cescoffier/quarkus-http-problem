@@ -24,10 +24,6 @@ final class ProblemLogger implements ProblemPostProcessor {
 
     @Override
     public HttpProblem apply(HttpProblem problem, ProblemContext context) {
-        if (!logger.isErrorEnabled()) {
-            return problem;
-        }
-
         if (problem.getStatusCode() >= 500) {
             if (logger.isErrorEnabled()) {
                 logger.error(serialize(problem), context.cause);
