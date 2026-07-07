@@ -6,6 +6,7 @@ import static io.quarkus.deployment.annotations.ExecutionTime.STATIC_INIT;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -48,7 +49,9 @@ public class ProblemProcessor {
             "io.quarkus.resteasy.json",
             "io.quarkus.resteasy-json");
 
-    private static List<ExceptionMapperDefinition> neededExceptionMappers() {
+    private static List<ExceptionMapperDefinition> neededExceptionMappers(ProblemBuildConfig config) {
+        Map<String, ProblemBuildConfig.MapperConfig> mapperConfig = config.mapper();
+
         Stream<ExceptionMapperDefinition> allMappers = Stream.of(
                 mapper(EXTENSION_MAIN_PACKAGE + "HttpProblemMapper")
                         .thatHandles(EXTENSION_MAIN_PACKAGE + "HttpProblem"),
@@ -103,7 +106,26 @@ public class ProblemProcessor {
 
         return allMappers
                 .filter(ExceptionMapperDefinition::isNeeded)
+                .filter(mapper -> isMapperEnabled(mapper.exceptionClassName, mapperConfig))
                 .collect(Collectors.toList());
+    }
+
+    static boolean isMapperEnabled(String exceptionClassName, Map<String, ProblemBuildConfig.MapperConfig> mapperConfig) {
+        String key = toKebabCase(exceptionClassName.substring(exceptionClassName.lastIndexOf('.') + 1));
+        ProblemBuildConfig.MapperConfig cfg = mapperConfig.get(key);
+        return cfg == null || cfg.enabled();
+    }
+
+    static String toKebabCase(String simpleName) {
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < simpleName.length(); i++) {
+            char c = simpleName.charAt(i);
+            if (Character.isUpperCase(c) && i > 0) {
+                result.append('-');
+            }
+            result.append(Character.toLowerCase(c));
+        }
+        return result.toString();
     }
 
     @BuildStep
@@ -116,14 +138,14 @@ public class ProblemProcessor {
     }
 
     @BuildStep(onlyIf = RestEasyClassicDetector.class)
-    void registerMappersForClassic(BuildProducer<ResteasyJaxrsProviderBuildItem> providers) {
-        neededExceptionMappers().forEach(mapper -> providers.produce(
+    void registerMappersForClassic(BuildProducer<ResteasyJaxrsProviderBuildItem> providers, ProblemBuildConfig config) {
+        neededExceptionMappers(config).forEach(mapper -> providers.produce(
                 new ResteasyJaxrsProviderBuildItem(mapper.mapperClassName)));
     }
 
     @BuildStep(onlyIf = RestEasyReactiveDetector.class)
-    void registerMappersForReactive(BuildProducer<ExceptionMapperBuildItem> providers) {
-        neededExceptionMappers().forEach(mapper -> providers.produce(
+    void registerMappersForReactive(BuildProducer<ExceptionMapperBuildItem> providers, ProblemBuildConfig config) {
+        neededExceptionMappers(config).forEach(mapper -> providers.produce(
                 new ExceptionMapperBuildItem(mapper.mapperClassName,
                         mapper.exceptionClassName, Priorities.AUTHENTICATION - 1, true)));
     }
@@ -132,11 +154,18 @@ public class ProblemProcessor {
     // asynchronous challenge/response resolution (Uni<Response>). These classes therefore use
     // @ServerExceptionMapper methods (not JAX-RS ExceptionMapper<T> providers) and must be registered as custom mappers.
     @BuildStep(onlyIf = RestEasyReactiveDetector.class)
-    void registerCustomExceptionMappers(BuildProducer<CustomExceptionMapperBuildItem> customExceptionMapper) {
-        customExceptionMapper.produce(
-                new CustomExceptionMapperBuildItem(EXTENSION_MAIN_PACKAGE + "security.UnauthorizedExceptionReactiveMapper"));
-        customExceptionMapper.produce(new CustomExceptionMapperBuildItem(
-                EXTENSION_MAIN_PACKAGE + "security.AuthenticationFailedExceptionReactiveMapper"));
+    void registerCustomExceptionMappers(BuildProducer<CustomExceptionMapperBuildItem> customExceptionMapper,
+            ProblemBuildConfig config) {
+        Map<String, ProblemBuildConfig.MapperConfig> mapperConfig = config.mapper();
+        if (isMapperEnabled("io.quarkus.security.UnauthorizedException", mapperConfig)) {
+            customExceptionMapper.produce(
+                    new CustomExceptionMapperBuildItem(
+                            EXTENSION_MAIN_PACKAGE + "security.UnauthorizedExceptionReactiveMapper"));
+        }
+        if (isMapperEnabled("io.quarkus.security.AuthenticationFailedException", mapperConfig)) {
+            customExceptionMapper.produce(new CustomExceptionMapperBuildItem(
+                    EXTENSION_MAIN_PACKAGE + "security.AuthenticationFailedExceptionReactiveMapper"));
+        }
     }
 
     @BuildStep(onlyIf = JacksonDetector.class)

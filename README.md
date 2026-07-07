@@ -252,6 +252,20 @@ Content-Type: application/problem+json
 }
 ```
 
+- (Build time) Disable specific built-in exception mappers. The key is the exception class simple name in kebab-case.
+
+```
+quarkus.http-problem.mapper.not-found-exception.enabled=false
+quarkus.http-problem.mapper.web-application-exception.enabled=false
+```
+
+When a mapper is disabled, the exception will not be converted to `application/problem+json` and will fall through to the default Quarkus error handling.
+
+Available mapper keys: `http-problem`, `web-application-exception`, `forbidden-exception`, `not-found-exception`, `unauthorized-exception`, 
+`authentication-failed-exception`, `authentication-redirect-exception`, `authentication-completion-exception`, `validation-exception`, 
+`constraint-violation-exception`, `json-processing-exception`, `unrecognized-property-exception`, `invalid-format-exception`, 
+`processing-exception`, `jsonb-exception`, `throwable-problem`, `exception`.
+
 - (Runtime) Tuning logging
 
 ```

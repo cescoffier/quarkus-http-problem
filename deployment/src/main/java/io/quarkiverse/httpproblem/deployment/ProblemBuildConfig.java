@@ -1,5 +1,6 @@
 package io.quarkiverse.httpproblem.deployment;
 
+import java.util.Map;
 import java.util.Set;
 
 import io.quarkus.runtime.annotations.ConfigPhase;
@@ -39,6 +40,27 @@ public interface ProblemBuildConfig {
         @WithName("validation-problem-schema")
         @WithDefault("HttpValidationProblem")
         String validationProblemSchema();
+    }
+
+    /**
+     * Per-mapper configuration, keyed by exception simple name in kebab-case
+     * (e.g. {@code web-application-exception}, {@code not-found-exception}).
+     * <p>
+     * Use this to disable specific built-in exception mappers:
+     *
+     * <pre>
+     * quarkus.http-problem.mapper.not-found-exception.enabled=false
+     * </pre>
+     */
+    @WithName("mapper")
+    Map<String, MapperConfig> mapper();
+
+    interface MapperConfig {
+        /**
+         * Whether the mapper for this exception type should be registered.
+         */
+        @WithDefault("true")
+        boolean enabled();
     }
 
     /**
