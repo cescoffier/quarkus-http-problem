@@ -3,18 +3,28 @@ package io.quarkiverse.httpproblem.jaxrs;
 import java.util.Optional;
 
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 
 /**
  * Generic exception mapper for JaxRS WebApplicationExceptions - it passes status and message to application/problem response.
  */
 @Priority(Priorities.USER)
 public final class WebApplicationExceptionMapper extends ExceptionMapperBase<WebApplicationException> {
+
+    public WebApplicationExceptionMapper() {
+    }
+
+    @Inject
+    public WebApplicationExceptionMapper(PostProcessorsRegistry postProcessorsRegistry) {
+        super(postProcessorsRegistry);
+    }
 
     @Override
     protected HttpProblem toProblem(WebApplicationException exception) {

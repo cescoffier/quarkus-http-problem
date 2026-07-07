@@ -2,14 +2,22 @@ package io.quarkiverse.httpproblem.jaxrs;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
 
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
+
 class NotFoundExceptionMapperTest {
 
-    NotFoundExceptionMapper mapper = new NotFoundExceptionMapper();
+    PostProcessorsRegistry registry = new PostProcessorsRegistry(
+            List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
+    NotFoundExceptionMapper mapper = new NotFoundExceptionMapper(registry);
 
     @Test
     void shouldProduceHttp404() {

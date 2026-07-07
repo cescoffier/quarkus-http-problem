@@ -3,6 +3,8 @@ package io.quarkiverse.httpproblem.jackson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.util.List;
+
 import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
@@ -12,10 +14,15 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
 
 class InvalidFormatExceptionMapperTest {
 
-    InvalidFormatExceptionMapper mapper = new InvalidFormatExceptionMapper();
+    PostProcessorsRegistry registry = new PostProcessorsRegistry(
+            List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
+    InvalidFormatExceptionMapper mapper = new InvalidFormatExceptionMapper(registry);
 
     @Test
     void shouldProduceHttp400WithFieldInfo() {

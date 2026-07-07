@@ -1,45 +1,34 @@
 package io.quarkiverse.httpproblem.postprocessing;
 
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import org.slf4j.LoggerFactory;
-
 import io.quarkiverse.httpproblem.HttpProblem;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.enterprise.inject.Instance;
+import jakarta.inject.Inject;
+
+import java.util.List;
 
 /**
- * Container for prioritised list of Problem post-processors. This class is thread-safe.
+ * Container for prioritised list of Problem post-processors.
+ * Collects all CDI beans implementing ProblemPostProcessor and sorts them by priority at startup.
  */
-public final class PostProcessorsRegistry {
+@ApplicationScoped
+public class PostProcessorsRegistry {
 
-    private final List<ProblemPostProcessor> processors = new CopyOnWriteArrayList<>();
+    private List<ProblemPostProcessor> processors;
 
-    public PostProcessorsRegistry() {
-        reset();
+    @Inject
+    PostProcessorsRegistry(Instance<ProblemPostProcessor> processorInstances) {
+        this.processors = processorInstances.stream()
+                .sorted(ProblemPostProcessor.DEFAULT_ORDERING)
+                .toList();
     }
 
-    /**
-     * Removes all registered post-processors and registers default ones. Used mainly for Quarkus dev mode (live-reload) tests
-     * where there's a need to reset registered processors because of config change.
-     */
-    public synchronized void reset() {
-        processors.clear();
-        register(new ProblemLogger(LoggerFactory.getLogger("http-problem")));
-        register(new ProblemDefaultsProvider());
+    public PostProcessorsRegistry(List<ProblemPostProcessor> processors) {
+        this.processors = processors.stream()
+                .sorted(ProblemPostProcessor.DEFAULT_ORDERING)
+                .toList();
     }
 
-    public synchronized void register(ProblemPostProcessor processor) {
-        processors.add(processor);
-        processors.sort(ProblemPostProcessor.DEFAULT_ORDERING);
-    }
-
-    /**
-     * Applies all registered post-processors on a given Problem, in prioritized order.
-     *
-     * @param problem Original Problem produced by Exception Mapper
-     * @param context Additional info on cause (original exception caught by ExceptionMapper) and HTTP request
-     * @return Enhanced version of original Problem
-     */
     public HttpProblem applyPostProcessing(HttpProblem problem, ProblemContext context) {
         HttpProblem finalProblem = problem;
         for (ProblemPostProcessor processor : processors) {

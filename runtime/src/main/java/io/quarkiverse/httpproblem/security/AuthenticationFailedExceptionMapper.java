@@ -1,33 +1,34 @@
 package io.quarkiverse.httpproblem.security;
 
 import jakarta.annotation.Priority;
-import jakarta.enterprise.inject.spi.CDI;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.vertx.http.runtime.CurrentVertxRequest;
 
-/**
- * Mapper overriding default Quarkus exception mapper to make all error responses compliant with RFC7807.
- */
 @Priority(Priorities.USER - 1)
 public final class AuthenticationFailedExceptionMapper extends ExceptionMapperBase<AuthenticationFailedException> {
 
-    @Override
-    protected HttpProblem toProblem(AuthenticationFailedException exception) {
-        return HttpUnauthorizedUtils.toProblem(currentVertxRequest().getCurrent(), exception)
-                .await().indefinitely();
+    CurrentVertxRequest currentVertxRequest;
+
+    public AuthenticationFailedExceptionMapper() {
     }
 
-    volatile CurrentVertxRequest currentVertxRequest;
+    @Inject
+    public AuthenticationFailedExceptionMapper(PostProcessorsRegistry postProcessorsRegistry,
+            CurrentVertxRequest currentVertxRequest) {
+        super(postProcessorsRegistry);
+        this.currentVertxRequest = currentVertxRequest;
+    }
 
-    private CurrentVertxRequest currentVertxRequest() {
-        if (currentVertxRequest == null) {
-            currentVertxRequest = CDI.current().select(CurrentVertxRequest.class).get();
-        }
-        return currentVertxRequest;
+    @Override
+    protected HttpProblem toProblem(AuthenticationFailedException exception) {
+        return HttpUnauthorizedUtils.toProblem(currentVertxRequest.getCurrent(), exception)
+                .await().indefinitely();
     }
 
 }

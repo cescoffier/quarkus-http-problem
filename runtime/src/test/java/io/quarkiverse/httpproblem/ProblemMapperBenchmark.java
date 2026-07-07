@@ -4,6 +4,8 @@ import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import jakarta.ws.rs.core.Response;
@@ -28,9 +30,10 @@ import org.openjdk.jmh.runner.RunnerException;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 
-import com.google.common.collect.Sets;
-
-import io.quarkiverse.httpproblem.postprocessing.ProblemRecorder;
+import io.quarkiverse.httpproblem.postprocessing.MdcPropertiesInjector;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
 
 /**
  * JMH benchmark for selected exception Mapper with all post-processors enabled + junit runner test for convenience.
@@ -49,14 +52,17 @@ public class ProblemMapperBenchmark {
     @State(Scope.Thread)
     public static class BenchmarkState {
 
-        public final HttpProblemMapper mapper = new HttpProblemMapper();
+        public HttpProblemMapper mapper;
 
         public final HttpProblem problem = HttpProblemMother.complexProblem().build();
 
         @Setup(Level.Trial)
         public void initMapper() {
-            ProblemRecorder recorder = new ProblemRecorder();
-            recorder.configureMdc(Sets.newHashSet("uuid"));
+            PostProcessorsRegistry registry = new PostProcessorsRegistry(List.of(
+                    new ProblemLogger(),
+                    new ProblemDefaultsProvider(),
+                    new MdcPropertiesInjector(Set.of("uuid"))));
+            mapper = new HttpProblemMapper(registry);
         }
     }
 

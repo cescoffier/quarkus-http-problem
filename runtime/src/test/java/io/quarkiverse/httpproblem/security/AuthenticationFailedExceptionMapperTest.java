@@ -3,22 +3,24 @@ package io.quarkiverse.httpproblem.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.util.List;
+
 import jakarta.ws.rs.core.Response;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
 import io.quarkus.security.AuthenticationFailedException;
 import io.quarkus.vertx.http.runtime.CurrentVertxRequest;
 
 class AuthenticationFailedExceptionMapperTest {
 
-    AuthenticationFailedExceptionMapper mapper = new AuthenticationFailedExceptionMapper();
-
-    @BeforeEach
-    void setup() {
-        mapper.currentVertxRequest = mock(CurrentVertxRequest.class);
-    }
+    PostProcessorsRegistry registry = new PostProcessorsRegistry(
+            List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
+    CurrentVertxRequest currentVertxRequest = mock(CurrentVertxRequest.class);
+    AuthenticationFailedExceptionMapper mapper = new AuthenticationFailedExceptionMapper(registry, currentVertxRequest);
 
     @Test
     void shouldProduceHttp401() {

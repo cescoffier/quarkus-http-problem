@@ -6,6 +6,7 @@ import static jakarta.ws.rs.core.HttpHeaders.RETRY_AFTER;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.net.URI;
+import java.util.List;
 
 import jakarta.ws.rs.RedirectionException;
 import jakarta.ws.rs.WebApplicationException;
@@ -15,12 +16,17 @@ import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
 
 class WebApplicationExceptionMapperTest {
 
     static final MediaType MEDIA_TYPE_SHOULD_BE_IGNORED = MediaType.TEXT_PLAIN_TYPE;
 
-    WebApplicationExceptionMapper mapper = new WebApplicationExceptionMapper();
+    PostProcessorsRegistry registry = new PostProcessorsRegistry(
+            List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
+    WebApplicationExceptionMapper mapper = new WebApplicationExceptionMapper(registry);
 
     @Test
     void shouldMapAllBasicFields() {

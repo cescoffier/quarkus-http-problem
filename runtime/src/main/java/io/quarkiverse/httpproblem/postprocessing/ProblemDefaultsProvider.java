@@ -1,13 +1,12 @@
 package io.quarkiverse.httpproblem.postprocessing;
 
+import jakarta.inject.Singleton;
+
 import io.quarkiverse.httpproblem.HttpProblem;
 import io.quarkiverse.httpproblem.InstanceUtils;
 
-/**
- * Replaces <code>null</code> value of <code>instance</code> with URI of currently served endpoint, i.e
- * <code>/products/123</code>
- */
-final class ProblemDefaultsProvider implements ProblemPostProcessor {
+@Singleton
+public class ProblemDefaultsProvider implements ProblemPostProcessor {
 
     @Override
     public int priority() {

@@ -17,14 +17,14 @@ class PostProcessorsRegistryTest {
     static final int MEDIUM = 10;
     static final int LOW = 9;
 
-    PostProcessorsRegistry registry = new PostProcessorsRegistry();
     List<Integer> invocations = new ArrayList<>();
 
     @Test
     void shouldIterateFromHighestToLowestPriority() {
-        registry.register(processorWithPriority(MEDIUM));
-        registry.register(processorWithPriority(LOW));
-        registry.register(processorWithPriority(HIGHEST));
+        PostProcessorsRegistry registry = new PostProcessorsRegistry(List.of(
+                processorWithPriority(MEDIUM),
+                processorWithPriority(LOW),
+                processorWithPriority(HIGHEST)));
 
         registry.applyPostProcessing(badRequestProblem(), simpleContext());
 
@@ -33,10 +33,11 @@ class PostProcessorsRegistryTest {
 
     @Test
     void shouldTolerateDuplicates() {
-        registry.register(processorWithPriority(MEDIUM));
-        registry.register(processorWithPriority(HIGHEST));
-        registry.register(processorWithPriority(MEDIUM));
-        registry.register(processorWithPriority(MEDIUM));
+        PostProcessorsRegistry registry = new PostProcessorsRegistry(List.of(
+                processorWithPriority(MEDIUM),
+                processorWithPriority(HIGHEST),
+                processorWithPriority(MEDIUM),
+                processorWithPriority(MEDIUM)));
 
         registry.applyPostProcessing(badRequestProblem(), simpleContext());
 

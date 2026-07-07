@@ -1,11 +1,13 @@
 package io.quarkiverse.httpproblem.security;
 
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.core.HttpHeaders;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import io.quarkus.security.AuthenticationRedirectException;
 
 /**
@@ -13,6 +15,14 @@ import io.quarkus.security.AuthenticationRedirectException;
  */
 @Priority(Priorities.USER - 1)
 public final class AuthenticationRedirectExceptionMapper extends ExceptionMapperBase<AuthenticationRedirectException> {
+
+    public AuthenticationRedirectExceptionMapper() {
+    }
+
+    @Inject
+    public AuthenticationRedirectExceptionMapper(PostProcessorsRegistry postProcessorsRegistry) {
+        super(postProcessorsRegistry);
+    }
 
     @Override
     protected HttpProblem toProblem(AuthenticationRedirectException exception) {

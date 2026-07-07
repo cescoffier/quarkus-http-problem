@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
@@ -26,6 +27,7 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 
 /**
  * Exception Mapper for ConstraintViolationException from Bean Validation API. Hibernate Validator, among others throw
@@ -54,24 +56,24 @@ public final class ConstraintViolationExceptionMapper extends ExceptionMapperBas
             .flatMap(Optional::stream)
             .toList();
 
-    private record ConstraintViolationConfig(int status, String title) {
-        // Create a record to store immutable data.
+    private ConstraintViolationConfig constraintViolationConfig;
+
+    public ConstraintViolationExceptionMapper() {
     }
 
-    private static volatile ConstraintViolationConfig DEFAULT = new ConstraintViolationConfig(400, "Bad Request");
+    @Inject
+    public ConstraintViolationExceptionMapper(PostProcessorsRegistry postProcessorsRegistry,
+            ConstraintViolationConfig constraintViolationConfig) {
+        super(postProcessorsRegistry);
+        this.constraintViolationConfig = constraintViolationConfig;
+    }
 
     @Context
     ResourceInfo resourceInfo;
 
-    // Called from the recorder, only once.
-    public static void configure(int status, String title) {
-        DEFAULT = new ConstraintViolationConfig(status, title);
-    }
-
     @Override
     protected HttpValidationProblem toProblem(ConstraintViolationException exception) {
-        ConstraintViolationConfig config = DEFAULT; // single volatile read
-        return new HttpValidationProblem(config.status(), config.title(),
+        return new HttpValidationProblem(constraintViolationConfig.status(), constraintViolationConfig.title(),
                 toViolations(exception.getConstraintViolations()));
     }
 
