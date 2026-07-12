@@ -7,8 +7,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import java.util.Collections;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.Logger;
 
 import io.quarkus.deployment.Capabilities;
@@ -49,6 +52,46 @@ class ProblemProcessorTest {
 
         verify(logger).error("`quarkus-http-problem` extension is useless without json provider. "
                 + "Please add `quarkus-rest-jackson` or `quarkus-rest-jsonb` (or classic `resteasy` equivalent) extension to your project.");
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "WebApplicationException, web-application-exception",
+            "NotFoundException, not-found-exception",
+            "ForbiddenException, forbidden-exception",
+            "HttpProblem, http-problem",
+            "UnauthorizedException, unauthorized-exception",
+            "AuthenticationFailedException, authentication-failed-exception",
+            "ConstraintViolationException, constraint-violation-exception",
+            "JsonProcessingException, json-processing-exception",
+            "Exception, exception"
+    })
+    void toKebabCaseShouldConvertClassNamesCorrectly(String input, String expected) {
+        assertThat(ProblemProcessor.toKebabCase(input)).isEqualTo(expected);
+    }
+
+    @Test
+    void isMapperEnabledShouldReturnTrueWhenNoConfigPresent() {
+        assertThat(ProblemProcessor.isMapperEnabled("jakarta.ws.rs.NotFoundException", Map.of()))
+                .isTrue();
+    }
+
+    @Test
+    void isMapperEnabledShouldReturnFalseWhenDisabled() {
+        ProblemBuildConfig.MapperConfig disabled = () -> false;
+        Map<String, ProblemBuildConfig.MapperConfig> config = Map.of("not-found-exception", disabled);
+
+        assertThat(ProblemProcessor.isMapperEnabled("jakarta.ws.rs.NotFoundException", config))
+                .isFalse();
+    }
+
+    @Test
+    void isMapperEnabledShouldReturnTrueWhenExplicitlyEnabled() {
+        ProblemBuildConfig.MapperConfig enabled = () -> true;
+        Map<String, ProblemBuildConfig.MapperConfig> config = Map.of("not-found-exception", enabled);
+
+        assertThat(ProblemProcessor.isMapperEnabled("jakarta.ws.rs.NotFoundException", config))
+                .isTrue();
     }
 
 }
