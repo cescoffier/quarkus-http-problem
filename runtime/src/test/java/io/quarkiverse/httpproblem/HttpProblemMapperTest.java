@@ -2,13 +2,21 @@ package io.quarkiverse.httpproblem;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
+
 import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
 
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
+
 class HttpProblemMapperTest {
 
-    HttpProblemMapper mapper = new HttpProblemMapper();
+    PostProcessorsRegistry registry = new PostProcessorsRegistry(
+            List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
+    HttpProblemMapper mapper = new HttpProblemMapper(registry);
 
     @Test
     void responseShouldIncludeHeaders() {

@@ -3,15 +3,23 @@ package io.quarkiverse.httpproblem;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.zalando.problem.Status.BAD_REQUEST;
 
+import java.util.List;
+
 import jakarta.ws.rs.core.Response;
 
 import org.junit.jupiter.api.Test;
 import org.zalando.problem.Problem;
 import org.zalando.problem.ThrowableProblem;
 
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
+
 class ZalandoProblemMapperTest {
 
-    ZalandoProblemMapper mapper = new ZalandoProblemMapper();
+    PostProcessorsRegistry registry = new PostProcessorsRegistry(
+            List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
+    ZalandoProblemMapper mapper = new ZalandoProblemMapper(registry);
 
     @Test
     void responseShouldUseProblemStatus() {

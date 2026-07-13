@@ -3,10 +3,13 @@ package io.quarkiverse.httpproblem;
 import static jakarta.ws.rs.core.Response.Status.INTERNAL_SERVER_ERROR;
 
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.ext.ExceptionMapper;
 
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
+
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 
 /**
  * Default exception mapper processing all exceptions not matching any more specific mapper.
@@ -15,6 +18,14 @@ import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 @APIResponse(responseCode = "500", description = "Internal Server Error: the server encountered an unexpected condition that prevented it from fulfilling the request")
 public final class DefaultExceptionMapper extends ExceptionMapperBase<Exception>
         implements ExceptionMapper<Exception> {
+
+    public DefaultExceptionMapper() {
+    }
+
+    @Inject
+    public DefaultExceptionMapper(PostProcessorsRegistry postProcessorsRegistry) {
+        super(postProcessorsRegistry);
+    }
 
     @Override
     protected HttpProblem toProblem(Exception exception) {

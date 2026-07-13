@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.core.Response;
 
@@ -12,12 +13,21 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 
 /**
  * Mapper for Jackson InvalidFormatException, which is more specialised version of JsonProcessingException
  */
 @Priority(Priorities.USER)
 public final class InvalidFormatExceptionMapper extends ExceptionMapperBase<InvalidFormatException> {
+
+    public InvalidFormatExceptionMapper() {
+    }
+
+    @Inject
+    public InvalidFormatExceptionMapper(PostProcessorsRegistry postProcessorsRegistry) {
+        super(postProcessorsRegistry);
+    }
 
     @Override
     protected HttpProblem toProblem(InvalidFormatException exception) {

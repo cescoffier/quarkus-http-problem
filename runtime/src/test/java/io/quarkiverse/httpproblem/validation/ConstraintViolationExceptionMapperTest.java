@@ -49,6 +49,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
 
 class ConstraintViolationExceptionMapperTest {
 
@@ -57,7 +60,11 @@ class ConstraintViolationExceptionMapperTest {
     final String VALID = "aaaaaaa";
     final String TOO_SHORT_COMPANY_NAME = "CO";
 
-    final ConstraintViolationExceptionMapper mapper = new ConstraintViolationExceptionMapper();
+    final PostProcessorsRegistry registry = new PostProcessorsRegistry(
+            List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
+    final ConstraintViolationConfig constraintViolationConfig = new ConstraintViolationConfig(400, "Bad Request");
+    final ConstraintViolationExceptionMapper mapper = new ConstraintViolationExceptionMapper(registry,
+            constraintViolationConfig);
     final StubResourceInfo resourceInfo = StubResourceInfo.withDefaultValidator();
 
     @BeforeEach
@@ -205,7 +212,8 @@ class ConstraintViolationExceptionMapperTest {
         Set<ConstraintViolation<ProgrammaticTestBean>> violations = validator.validate(bean);
         ConstraintViolationException exception = new ConstraintViolationException(violations);
 
-        ConstraintViolationExceptionMapper resourceInfoLessMapper = new ConstraintViolationExceptionMapper();
+        ConstraintViolationExceptionMapper resourceInfoLessMapper = new ConstraintViolationExceptionMapper(registry,
+                constraintViolationConfig);
         resourceInfoLessMapper.resourceInfo = null;
 
         List<Violation> mappedViolations = mapAndExtractViolations(exception, resourceInfoLessMapper);
@@ -229,7 +237,8 @@ class ConstraintViolationExceptionMapperTest {
         Set<ConstraintViolation<ProgrammaticNestedTestBean>> violations = validator.validate(bean);
         ConstraintViolationException exception = new ConstraintViolationException(violations);
 
-        ConstraintViolationExceptionMapper resourceInfoLessMapper = new ConstraintViolationExceptionMapper();
+        ConstraintViolationExceptionMapper resourceInfoLessMapper = new ConstraintViolationExceptionMapper(registry,
+                constraintViolationConfig);
         resourceInfoLessMapper.resourceInfo = null;
 
         List<Violation> mappedViolations = mapAndExtractViolations(exception, resourceInfoLessMapper);
@@ -280,7 +289,8 @@ class ConstraintViolationExceptionMapperTest {
                 .validateParameters(impl, implMethod, new Object[] { "short" });
         ConstraintViolationException exception = new ConstraintViolationException(constraintViolations);
 
-        ConstraintViolationExceptionMapper testMapper = new ConstraintViolationExceptionMapper();
+        ConstraintViolationExceptionMapper testMapper = new ConstraintViolationExceptionMapper(registry,
+                constraintViolationConfig);
         testMapper.resourceInfo = new ResourceInfo() {
             @Override
             public Method getResourceMethod() {
@@ -526,7 +536,8 @@ class ConstraintViolationExceptionMapperTest {
                 .validateParameters(resource, method, args);
         ConstraintViolationException exception = new ConstraintViolationException(violations);
 
-        ConstraintViolationExceptionMapper testMapper = new ConstraintViolationExceptionMapper();
+        ConstraintViolationExceptionMapper testMapper = new ConstraintViolationExceptionMapper(registry,
+                constraintViolationConfig);
         testMapper.resourceInfo = new ResourceInfo() {
             @Override
             public Method getResourceMethod() {
@@ -575,7 +586,8 @@ class ConstraintViolationExceptionMapperTest {
                 .validateParameters(resource, method, new Object[] { beanParam });
         ConstraintViolationException exception = new ConstraintViolationException(violations);
 
-        ConstraintViolationExceptionMapper testMapper = new ConstraintViolationExceptionMapper();
+        ConstraintViolationExceptionMapper testMapper = new ConstraintViolationExceptionMapper(registry,
+                constraintViolationConfig);
         testMapper.resourceInfo = new ResourceInfo() {
             @Override
             public Method getResourceMethod() {
@@ -625,69 +637,4 @@ class ConstraintViolationExceptionMapperTest {
         }
     }
 
-    /**
-     * Verifies that configure() and toProblem() are atomic: no request can ever see a status from one
-     * configure() call paired with a title from another configure() call.
-     */
-    @Test
-    void configurationIsAlwaysReadAtomically() throws InterruptedException {
-        final int iterations = 10_000;
-        final ConstraintViolationExceptionMapper testMapper = new ConstraintViolationExceptionMapper();
-        final ConstraintViolationException exception = new ConstraintViolationException("test", null);
-
-        final java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
-        final java.util.concurrent.CountDownLatch doneLatch = new java.util.concurrent.CountDownLatch(2);
-        final java.util.List<HttpValidationProblem> results = new java.util.concurrent.CopyOnWriteArrayList<>();
-
-        // Writer thread: alternates between two consistent (status, title) pairs
-        Thread writer = new Thread(() -> {
-            try {
-                startLatch.await();
-                for (int i = 0; i < iterations; i++) {
-                    if (i % 2 == 0) {
-                        ConstraintViolationExceptionMapper.configure(422, "Constraint violation");
-                    } else {
-                        ConstraintViolationExceptionMapper.configure(400, "Bad Request");
-                    }
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } finally {
-                doneLatch.countDown();
-            }
-        });
-
-        // Reader thread: calls toProblem() and collects results
-        Thread reader = new Thread(() -> {
-            try {
-                startLatch.await();
-                for (int i = 0; i < iterations; i++) {
-                    results.add(testMapper.toProblem(exception));
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            } finally {
-                doneLatch.countDown();
-            }
-        });
-
-        writer.start();
-        reader.start();
-        startLatch.countDown(); // release both threads at the same instant
-        doneLatch.await();
-
-        // Reset to default so other tests are unaffected
-        ConstraintViolationExceptionMapper.configure(400, "Bad Request");
-
-        // Every result must have a self-consistent (status, title) pair — never a torn read
-        for (HttpValidationProblem problem : results) {
-            int status = problem.getStatusCode();
-            String actualTitle = problem.getTitle();
-            boolean isDefaultPair = status == 400 && "Bad Request".equals(actualTitle);
-            boolean isCustomPair = status == 422 && "Constraint violation".equals(actualTitle);
-            assertThat(isDefaultPair || isCustomPair)
-                    .as("Torn read detected: status=%d title='%s'", status, actualTitle)
-                    .isTrue();
-        }
-    }
 }

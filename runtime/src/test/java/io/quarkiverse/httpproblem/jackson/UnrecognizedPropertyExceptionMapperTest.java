@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 import java.util.ArrayList;
+import java.util.List;
 
 import jakarta.ws.rs.core.Response;
 
@@ -13,10 +14,15 @@ import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
 
 class UnrecognizedPropertyExceptionMapperTest {
 
-    UnrecognizedPropertyExceptionMapper mapper = new UnrecognizedPropertyExceptionMapper();
+    PostProcessorsRegistry registry = new PostProcessorsRegistry(
+            List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
+    UnrecognizedPropertyExceptionMapper mapper = new UnrecognizedPropertyExceptionMapper(registry);
 
     @Test
     void shouldProduceHttp400() {

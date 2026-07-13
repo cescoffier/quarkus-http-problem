@@ -6,17 +6,21 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jakarta.inject.Singleton;
+
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import io.quarkiverse.httpproblem.HttpProblem;
 
-/**
- * Logs problems with ERROR (for HTTP 5XX) or INFO (other exceptions) log level. In case of ERROR (HTTP 5XX) stack trace is
- * printed as well.
- */
-final class ProblemLogger implements ProblemPostProcessor {
+@Singleton
+public class ProblemLogger implements ProblemPostProcessor {
 
     private final Logger logger;
+
+    public ProblemLogger() {
+        this(LoggerFactory.getLogger("http-problem"));
+    }
 
     ProblemLogger(Logger logger) {
         this.logger = logger;

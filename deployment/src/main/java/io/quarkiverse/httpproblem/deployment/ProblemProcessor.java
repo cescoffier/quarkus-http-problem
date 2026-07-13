@@ -1,7 +1,6 @@
 package io.quarkiverse.httpproblem.deployment;
 
 import static io.quarkiverse.httpproblem.deployment.ExceptionMapperDefinition.mapper;
-import static io.quarkus.deployment.annotations.ExecutionTime.RUNTIME_INIT;
 import static io.quarkus.deployment.annotations.ExecutionTime.STATIC_INIT;
 
 import java.util.Arrays;
@@ -10,15 +9,22 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import jakarta.inject.Singleton;
 import jakarta.ws.rs.Priorities;
 
 import org.eclipse.microprofile.openapi.OASFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.quarkiverse.httpproblem.postprocessing.MdcPropertiesInjector;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
+import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
+import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
 import io.quarkiverse.httpproblem.postprocessing.ProblemPostProcessor;
 import io.quarkiverse.httpproblem.postprocessing.ProblemRecorder;
+import io.quarkiverse.httpproblem.validation.ConstraintViolationConfig;
 import io.quarkus.arc.deployment.AdditionalBeanBuildItem;
+import io.quarkus.arc.deployment.SyntheticBeanBuildItem;
 import io.quarkus.arc.deployment.UnremovableBeanBuildItem;
 import io.quarkus.deployment.Capabilities;
 import io.quarkus.deployment.annotations.BuildProducer;
@@ -26,13 +32,13 @@ import io.quarkus.deployment.annotations.BuildStep;
 import io.quarkus.deployment.annotations.Record;
 import io.quarkus.deployment.builditem.FeatureBuildItem;
 import io.quarkus.deployment.builditem.IndexDependencyBuildItem;
-import io.quarkus.deployment.builditem.LiveReloadBuildItem;
 import io.quarkus.deployment.builditem.nativeimage.ReflectiveClassBuildItem;
 import io.quarkus.jsonb.spi.JsonbDeserializerBuildItem;
 import io.quarkus.jsonb.spi.JsonbSerializerBuildItem;
 import io.quarkus.resteasy.common.spi.ResteasyJaxrsProviderBuildItem;
 import io.quarkus.resteasy.reactive.spi.CustomExceptionMapperBuildItem;
 import io.quarkus.resteasy.reactive.spi.ExceptionMapperBuildItem;
+import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.smallrye.openapi.deployment.spi.AddToOpenAPIDefinitionBuildItem;
 
 public class ProblemProcessor {
@@ -138,33 +144,41 @@ public class ProblemProcessor {
     }
 
     @BuildStep(onlyIf = RestEasyClassicDetector.class)
-    void registerMappersForClassic(BuildProducer<ResteasyJaxrsProviderBuildItem> providers, ProblemBuildConfig config) {
-        neededExceptionMappers(config).forEach(mapper -> providers.produce(
-                new ResteasyJaxrsProviderBuildItem(mapper.mapperClassName)));
+    void registerMappersForClassic(BuildProducer<ResteasyJaxrsProviderBuildItem> providers, ProblemBuildConfig config,
+            BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
+        neededExceptionMappers(config).forEach(mapper -> {
+            providers.produce(new ResteasyJaxrsProviderBuildItem(mapper.mapperClassName));
+            additionalBeans.produce(new AdditionalBeanBuildItem(mapper.mapperClassName));
+        });
+
     }
 
     @BuildStep(onlyIf = RestEasyReactiveDetector.class)
-    void registerMappersForReactive(BuildProducer<ExceptionMapperBuildItem> providers, ProblemBuildConfig config) {
-        neededExceptionMappers(config).forEach(mapper -> providers.produce(
-                new ExceptionMapperBuildItem(mapper.mapperClassName,
-                        mapper.exceptionClassName, Priorities.AUTHENTICATION - 1, true)));
+    void registerMappersForReactive(BuildProducer<ExceptionMapperBuildItem> providers, ProblemBuildConfig config,
+            BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
+        neededExceptionMappers(config).forEach(mapper -> {
+            providers.produce(
+                    new ExceptionMapperBuildItem(mapper.mapperClassName,
+                            mapper.exceptionClassName, Priorities.AUTHENTICATION - 1, true));
+            additionalBeans.produce(new AdditionalBeanBuildItem(mapper.mapperClassName));
+        });
     }
 
-    // Unauthorized/AuthenticationFailed handling in Quarkus REST is reactive: it needs Vert.x RoutingContext and
-    // asynchronous challenge/response resolution (Uni<Response>). These classes therefore use
-    // @ServerExceptionMapper methods (not JAX-RS ExceptionMapper<T> providers) and must be registered as custom mappers.
     @BuildStep(onlyIf = RestEasyReactiveDetector.class)
     void registerCustomExceptionMappers(BuildProducer<CustomExceptionMapperBuildItem> customExceptionMapper,
-            ProblemBuildConfig config) {
+            ProblemBuildConfig config, BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
+        String unauthorized = EXTENSION_MAIN_PACKAGE + "security.UnauthorizedExceptionReactiveMapper";
+        String authentication = EXTENSION_MAIN_PACKAGE + "security.AuthenticationFailedExceptionReactiveMapper";
+
         Map<String, ProblemBuildConfig.MapperConfig> mapperConfig = config.mapper();
-        if (isMapperEnabled("io.quarkus.security.UnauthorizedException", mapperConfig)) {
-            customExceptionMapper.produce(
-                    new CustomExceptionMapperBuildItem(
-                            EXTENSION_MAIN_PACKAGE + "security.UnauthorizedExceptionReactiveMapper"));
+        if (isMapperEnabled(unauthorized, mapperConfig)) {
+            customExceptionMapper.produce(new CustomExceptionMapperBuildItem(unauthorized));
+            additionalBeans.produce(new AdditionalBeanBuildItem(unauthorized));
         }
-        if (isMapperEnabled("io.quarkus.security.AuthenticationFailedException", mapperConfig)) {
-            customExceptionMapper.produce(new CustomExceptionMapperBuildItem(
-                    EXTENSION_MAIN_PACKAGE + "security.AuthenticationFailedExceptionReactiveMapper"));
+
+        if (isMapperEnabled(authentication, mapperConfig)) {
+            customExceptionMapper.produce(new CustomExceptionMapperBuildItem(authentication));
+            additionalBeans.produce(new AdditionalBeanBuildItem(authentication));
         }
     }
 
@@ -208,33 +222,39 @@ public class ProblemProcessor {
                 .build();
     }
 
+    @BuildStep
+    void registerBeans(BuildProducer<AdditionalBeanBuildItem> additionalBeans) {
+        additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(PostProcessorsRegistry.class));
+        additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(ProblemLogger.class));
+        additionalBeans.produce(AdditionalBeanBuildItem.unremovableOf(ProblemDefaultsProvider.class));
+    }
+
     @Record(STATIC_INIT)
     @BuildStep
-    void resetRecorder(ProblemRecorder recorder, LiveReloadBuildItem liveReload) {
-        if (liveReload.isLiveReload()) {
-            recorder.reset();
+    SyntheticBeanBuildItem setupMdc(ProblemRecorder recorder, ProblemBuildConfig config) {
+        if (config.includeMdcProperties().isEmpty()) {
+            return null;
         }
+        RuntimeValue<MdcPropertiesInjector> runtimeValue = recorder.createMdcInjector(config.includeMdcProperties());
+        return SyntheticBeanBuildItem.configure(MdcPropertiesInjector.class)
+                .scope(Singleton.class)
+                .addType(ProblemPostProcessor.class)
+                .runtimeValue(runtimeValue)
+                .unremovable()
+                .done();
     }
 
-    @Record(RUNTIME_INIT)
+    @Record(STATIC_INIT)
     @BuildStep
-    void setupMdc(ProblemRecorder recorder, ProblemBuildConfig config) {
-        recorder.configureMdc(config.includeMdcProperties());
-    }
-
-    @Record(RUNTIME_INIT)
-    @BuildStep
-    void registerCustomPostProcessors(ProblemRecorder recorder) {
-        recorder.registerCustomPostProcessors();
-    }
-
-    @Record(RUNTIME_INIT)
-    @BuildStep
-    void configureConstraintViolationMapper(ProblemRecorder recorder, ProblemBuildConfig config) {
-        if (config.constraintViolation() != null) {
-            recorder.configureConstraintViolationMapper(config.constraintViolation().status(),
-                    config.constraintViolation().title());
-        }
+    SyntheticBeanBuildItem configureConstraintViolation(ProblemRecorder recorder, ProblemBuildConfig config) {
+        int status = config.constraintViolation() != null ? config.constraintViolation().status() : 400;
+        String title = config.constraintViolation() != null ? config.constraintViolation().title() : "Bad Request";
+        RuntimeValue<ConstraintViolationConfig> runtimeValue = recorder.createConstraintViolationConfig(status, title);
+        return SyntheticBeanBuildItem.configure(ConstraintViolationConfig.class)
+                .scope(Singleton.class)
+                .runtimeValue(runtimeValue)
+                .unremovable()
+                .done();
     }
 
     @BuildStep

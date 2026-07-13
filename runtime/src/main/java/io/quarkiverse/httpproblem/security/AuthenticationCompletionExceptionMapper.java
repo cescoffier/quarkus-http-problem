@@ -3,10 +3,12 @@ package io.quarkiverse.httpproblem.security;
 import static jakarta.ws.rs.core.Response.Status.UNAUTHORIZED;
 
 import jakarta.annotation.Priority;
+import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import io.quarkus.security.AuthenticationCompletionException;
 
 /**
@@ -20,6 +22,14 @@ import io.quarkus.security.AuthenticationCompletionException;
  */
 @Priority(Priorities.USER - 1)
 public final class AuthenticationCompletionExceptionMapper extends ExceptionMapperBase<AuthenticationCompletionException> {
+
+    public AuthenticationCompletionExceptionMapper() {
+    }
+
+    @Inject
+    public AuthenticationCompletionExceptionMapper(PostProcessorsRegistry postProcessorsRegistry) {
+        super(postProcessorsRegistry);
+    }
 
     @Override
     protected HttpProblem toProblem(AuthenticationCompletionException exception) {

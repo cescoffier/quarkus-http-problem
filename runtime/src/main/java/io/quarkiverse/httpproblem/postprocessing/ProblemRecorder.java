@@ -2,34 +2,19 @@ package io.quarkiverse.httpproblem.postprocessing;
 
 import java.util.Set;
 
-import jakarta.enterprise.inject.spi.CDI;
-
-import io.quarkiverse.httpproblem.ExceptionMapperBase;
-import io.quarkiverse.httpproblem.validation.ConstraintViolationExceptionMapper;
+import io.quarkiverse.httpproblem.validation.ConstraintViolationConfig;
+import io.quarkus.runtime.RuntimeValue;
 import io.quarkus.runtime.annotations.Recorder;
 
-/**
- * Quarkus Recorder that applies configuration in the runtime.
- */
 @Recorder
 public class ProblemRecorder {
 
-    public void reset() {
-        ExceptionMapperBase.postProcessorsRegistry.reset();
+    public RuntimeValue<MdcPropertiesInjector> createMdcInjector(Set<String> properties) {
+        return new RuntimeValue<>(new MdcPropertiesInjector(properties));
     }
 
-    public void configureMdc(Set<String> includeMdcProperties) {
-        if (!includeMdcProperties.isEmpty()) {
-            ExceptionMapperBase.postProcessorsRegistry.register(new MdcPropertiesInjector(includeMdcProperties));
-        }
+    public RuntimeValue<ConstraintViolationConfig> createConstraintViolationConfig(int status, String title) {
+        return new RuntimeValue<>(new ConstraintViolationConfig(status, title));
     }
 
-    public void registerCustomPostProcessors() {
-        CDI.current().select(ProblemPostProcessor.class)
-                .forEach(ExceptionMapperBase.postProcessorsRegistry::register);
-    }
-
-    public void configureConstraintViolationMapper(int status, String title) {
-        ConstraintViolationExceptionMapper.configure(status, title);
-    }
 }
