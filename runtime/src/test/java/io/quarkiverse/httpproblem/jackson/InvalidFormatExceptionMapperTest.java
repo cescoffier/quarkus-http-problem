@@ -22,7 +22,7 @@ class InvalidFormatExceptionMapperTest {
 
     PostProcessorsRegistry registry = new PostProcessorsRegistry(
             List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
-    InvalidFormatExceptionMapper mapper = new InvalidFormatExceptionMapper(registry);
+    InvalidFormatExceptionMapper mapper = new InvalidFormatExceptionMapper(registry, true);
 
     @Test
     void shouldProduceHttp400WithFieldInfo() {
@@ -62,6 +62,33 @@ class InvalidFormatExceptionMapperTest {
         assertThat(response.getEntity())
                 .isInstanceOf(HttpProblem.class)
                 .hasFieldOrPropertyWithValue("parameters.field", "?");
+    }
+
+    @Test
+    void shouldSanitizeDetailByDefault() {
+        InvalidFormatExceptionMapper sanitizedMapper = new InvalidFormatExceptionMapper(registry, false);
+        InvalidFormatException exception = buildExceptionWithPath(
+                new JsonMappingException.Reference(this, "customFieldName"));
+
+        Response response = sanitizedMapper.toResponse(exception);
+
+        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.getEntity())
+                .isInstanceOf(HttpProblem.class)
+                .hasFieldOrPropertyWithValue("detail", InvalidFormatExceptionMapper.SANITIZED_DETAIL)
+                .hasFieldOrPropertyWithValue("parameters.field", "customFieldName");
+    }
+
+    @Test
+    void shouldPreserveDetailWhenIncludeDetails() {
+        InvalidFormatException exception = buildExceptionWithPath(
+                new JsonMappingException.Reference(this, "customFieldName"));
+
+        Response response = mapper.toResponse(exception);
+
+        assertThat(response.getEntity())
+                .isInstanceOf(HttpProblem.class)
+                .hasFieldOrPropertyWithValue("detail", "Invalid format of the field");
     }
 
     private InvalidFormatException buildExceptionWithPath(JsonMappingException.Reference... pathSegments) {

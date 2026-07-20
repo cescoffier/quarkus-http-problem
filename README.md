@@ -252,6 +252,25 @@ Content-Type: application/problem+json
 }
 ```
 
+- (Build time) Include raw exception messages in the detail field of JSON parsing/binding error responses. Disabled by default to prevent leaking internal class names and implementation details.
+
+```
+quarkus.http-problem.include-details=false
+```
+
+Result (malformed JSON POST):
+
+```json
+HTTP/1.1 400 Bad Request
+Content-Type: application/problem+json
+
+{
+    "status": 400,
+    "title": "Bad Request",
+    "detail": "Malformed request body"
+}
+```
+
 - (Build time) Disable specific built-in exception mappers. The key is the exception class simple name in kebab-case.
 
 ```
