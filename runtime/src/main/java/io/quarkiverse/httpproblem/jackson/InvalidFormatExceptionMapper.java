@@ -8,6 +8,8 @@ import jakarta.inject.Inject;
 import jakarta.ws.rs.Priorities;
 import jakarta.ws.rs.core.Response;
 
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 
@@ -21,20 +23,30 @@ import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 @Priority(Priorities.USER)
 public final class InvalidFormatExceptionMapper extends ExceptionMapperBase<InvalidFormatException> {
 
+    static final String SANITIZED_DETAIL = "Malformed request body";
+
+    private final boolean includeDetails;
+
     public InvalidFormatExceptionMapper() {
+        this.includeDetails = false;
     }
 
     @Inject
-    public InvalidFormatExceptionMapper(PostProcessorsRegistry postProcessorsRegistry) {
+    public InvalidFormatExceptionMapper(PostProcessorsRegistry postProcessorsRegistry,
+            @ConfigProperty(name = "quarkus.http-problem.include-details", defaultValue = "false") boolean includeDetails) {
         super(postProcessorsRegistry);
+        this.includeDetails = includeDetails;
     }
 
     @Override
     protected HttpProblem toProblem(InvalidFormatException exception) {
+        String detail = includeDetails
+                ? exception.getOriginalMessage()
+                : SANITIZED_DETAIL;
         return HttpProblem.builder()
                 .withStatus(Response.Status.BAD_REQUEST)
                 .withTitle(Response.Status.BAD_REQUEST.getReasonPhrase())
-                .withDetail(exception.getOriginalMessage())
+                .withDetail(detail)
                 .with("field", serializePath(exception.getPath()))
                 .build();
     }

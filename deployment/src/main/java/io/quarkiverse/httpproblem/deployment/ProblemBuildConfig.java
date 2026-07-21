@@ -14,6 +14,14 @@ import io.smallrye.config.WithName;
 public interface ProblemBuildConfig {
 
     /**
+     * When enabled, JSON parsing/binding exception mappers include the raw exception message
+     * in the problem detail field. When disabled (the default), a generic message is used
+     * to avoid leaking internal class names and implementation details.
+     */
+    @WithDefault("false")
+    boolean includeDetails();
+
+    /**
      * MDC properties that should be included in problem responses.
      */
     @WithDefault("uuid")
