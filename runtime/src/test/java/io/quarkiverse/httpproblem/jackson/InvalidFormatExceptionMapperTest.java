@@ -2,6 +2,7 @@ package io.quarkiverse.httpproblem.jackson;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 
 import io.quarkiverse.httpproblem.HttpProblem;
+import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
 import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
@@ -22,7 +24,7 @@ class InvalidFormatExceptionMapperTest {
 
     PostProcessorsRegistry registry = new PostProcessorsRegistry(
             List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
-    InvalidFormatExceptionMapper mapper = new InvalidFormatExceptionMapper(registry);
+    InvalidFormatExceptionMapper mapper = new InvalidFormatExceptionMapper(registry, configWith(true));
 
     @Test
     void shouldProduceHttp400WithFieldInfo() {
@@ -64,6 +66,33 @@ class InvalidFormatExceptionMapperTest {
                 .hasFieldOrPropertyWithValue("parameters.field", "?");
     }
 
+    @Test
+    void shouldSanitizeDetailByDefault() {
+        InvalidFormatExceptionMapper sanitizedMapper = new InvalidFormatExceptionMapper(registry, configWith(false));
+        InvalidFormatException exception = buildExceptionWithPath(
+                new JsonMappingException.Reference(this, "customFieldName"));
+
+        Response response = sanitizedMapper.toResponse(exception);
+
+        assertThat(response.getStatus()).isEqualTo(400);
+        assertThat(response.getEntity())
+                .isInstanceOf(HttpProblem.class)
+                .hasFieldOrPropertyWithValue("detail", InvalidFormatExceptionMapper.SANITIZED_DETAIL)
+                .hasFieldOrPropertyWithValue("parameters.field", "customFieldName");
+    }
+
+    @Test
+    void shouldPreserveDetailWhenIncludeDetails() {
+        InvalidFormatException exception = buildExceptionWithPath(
+                new JsonMappingException.Reference(this, "customFieldName"));
+
+        Response response = mapper.toResponse(exception);
+
+        assertThat(response.getEntity())
+                .isInstanceOf(HttpProblem.class)
+                .hasFieldOrPropertyWithValue("detail", "Invalid format of the field");
+    }
+
     private InvalidFormatException buildExceptionWithPath(JsonMappingException.Reference... pathSegments) {
         InvalidFormatException exception = new InvalidFormatException(mock(JsonParser.class),
                 "Invalid format of the field", this, this.getClass());
@@ -72,6 +101,12 @@ class InvalidFormatExceptionMapperTest {
             exception.prependPath(pathSegments[i]);
         }
         return exception;
+    }
+
+    private static ProblemRuntimeConfig configWith(boolean includeDetails) {
+        ProblemRuntimeConfig config = mock(ProblemRuntimeConfig.class);
+        when(config.includeDetails()).thenReturn(includeDetails);
+        return config;
     }
 
 }
