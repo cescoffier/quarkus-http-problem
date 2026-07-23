@@ -10,7 +10,7 @@ import jakarta.ws.rs.ProcessingException;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 
 @Priority(Priorities.USER)
@@ -21,10 +21,12 @@ public final class RestEasyClassicJsonbExceptionMapper extends ExceptionMapperBa
     private boolean includeDetails;
 
     public RestEasyClassicJsonbExceptionMapper() {
+        this.includeDetails = false;
     }
 
     @Inject
-    public RestEasyClassicJsonbExceptionMapper(PostProcessorsRegistry postProcessorsRegistry, ProblemRuntimeConfig config) {
+    public RestEasyClassicJsonbExceptionMapper(PostProcessorsRegistry postProcessorsRegistry,
+            ProblemRuntimeFixedConfig config) {
         super(postProcessorsRegistry);
         this.includeDetails = config.includeDetails();
     }

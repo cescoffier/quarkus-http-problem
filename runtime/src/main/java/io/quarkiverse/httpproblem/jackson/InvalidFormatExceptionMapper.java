@@ -13,7 +13,7 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 
 /**
@@ -27,10 +27,11 @@ public final class InvalidFormatExceptionMapper extends ExceptionMapperBase<Inva
     private boolean includeDetails;
 
     public InvalidFormatExceptionMapper() {
+        this.includeDetails = false;
     }
 
     @Inject
-    public InvalidFormatExceptionMapper(PostProcessorsRegistry postProcessorsRegistry, ProblemRuntimeConfig config) {
+    public InvalidFormatExceptionMapper(PostProcessorsRegistry postProcessorsRegistry, ProblemRuntimeFixedConfig config) {
         super(postProcessorsRegistry);
         this.includeDetails = config.includeDetails();
     }

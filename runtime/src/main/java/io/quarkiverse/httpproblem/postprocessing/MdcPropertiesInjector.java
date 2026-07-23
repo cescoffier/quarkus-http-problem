@@ -8,7 +8,7 @@ import jakarta.inject.Inject;
 import org.slf4j.MDC;
 
 import io.quarkiverse.httpproblem.HttpProblem;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 
 /**
  * Injects existing MDC properties listed in the configuration into final response. Missing MDC values and properties already
@@ -19,7 +19,7 @@ public class MdcPropertiesInjector implements ProblemPostProcessor {
     private final Set<String> properties;
 
     @Inject
-    public MdcPropertiesInjector(ProblemRuntimeConfig config) {
+    public MdcPropertiesInjector(ProblemRuntimeFixedConfig config) {
         this.properties = config.includeMdcProperties();
     }
 

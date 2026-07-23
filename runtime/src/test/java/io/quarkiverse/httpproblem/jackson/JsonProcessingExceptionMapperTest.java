@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.core.JsonParseException;
 
 import io.quarkiverse.httpproblem.HttpProblem;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
 import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
@@ -50,8 +50,8 @@ class JsonProcessingExceptionMapperTest {
                 .hasFieldOrPropertyWithValue("detail", JsonProcessingExceptionMapper.SANITIZED_DETAIL);
     }
 
-    private static ProblemRuntimeConfig configWith(boolean includeDetails) {
-        ProblemRuntimeConfig config = mock(ProblemRuntimeConfig.class);
+    private static ProblemRuntimeFixedConfig configWith(boolean includeDetails) {
+        ProblemRuntimeFixedConfig config = mock(ProblemRuntimeFixedConfig.class);
         when(config.includeDetails()).thenReturn(includeDetails);
         return config;
     }

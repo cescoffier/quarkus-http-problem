@@ -27,7 +27,7 @@ import jakarta.ws.rs.ext.ExceptionMapper;
 import org.eclipse.microprofile.openapi.annotations.responses.APIResponse;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 
 /**
@@ -65,7 +65,7 @@ public final class ConstraintViolationExceptionMapper extends ExceptionMapperBas
 
     @Inject
     public ConstraintViolationExceptionMapper(PostProcessorsRegistry postProcessorsRegistry,
-            ProblemRuntimeConfig config) {
+            ProblemRuntimeFixedConfig config) {
         super(postProcessorsRegistry);
         this.constraintViolationStatus = config.constraintViolation().status();
         this.constraintViolationTitle = config.constraintViolation().title();

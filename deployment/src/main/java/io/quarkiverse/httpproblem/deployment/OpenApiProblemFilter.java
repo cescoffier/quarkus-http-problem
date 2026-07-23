@@ -11,7 +11,7 @@ import org.eclipse.microprofile.openapi.models.media.Schema;
 import org.eclipse.microprofile.openapi.models.responses.APIResponse;
 
 import io.quarkiverse.httpproblem.HttpProblem;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 
 /**
  * OpenAPI build-time filter that automatically augments various OpenApi model parts:
@@ -20,11 +20,11 @@ import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
  */
 public class OpenApiProblemFilter implements OASFilter {
 
-    private final ProblemRuntimeConfig runtimeConfig;
+    private final ProblemRuntimeFixedConfig runtimeConfig;
     private final Content problemContent;
     private final Content validationProblemContent;
 
-    public OpenApiProblemFilter(ProblemBuildConfig config, ProblemRuntimeConfig runtimeConfig) {
+    public OpenApiProblemFilter(ProblemBuildConfig config, ProblemRuntimeFixedConfig runtimeConfig) {
         this.runtimeConfig = runtimeConfig;
         this.problemContent = createContent(config.openapi().defaultSchema());
         this.validationProblemContent = createContent(config.openapi().validationProblemSchema());

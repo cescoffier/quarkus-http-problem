@@ -51,7 +51,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
 
 import io.quarkiverse.httpproblem.HttpProblem;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
 import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
@@ -65,7 +65,7 @@ class ConstraintViolationExceptionMapperTest {
 
     final PostProcessorsRegistry registry = new PostProcessorsRegistry(
             List.of(new ProblemLogger(), new ProblemDefaultsProvider()));
-    final ProblemRuntimeConfig runtimeConfig = constraintViolationConfig(400, "Bad Request");
+    final ProblemRuntimeFixedConfig runtimeConfig = constraintViolationConfig(400, "Bad Request");
     final ConstraintViolationExceptionMapper mapper = new ConstraintViolationExceptionMapper(registry, runtimeConfig);
     final StubResourceInfo resourceInfo = StubResourceInfo.withDefaultValidator();
 
@@ -636,9 +636,10 @@ class ConstraintViolationExceptionMapperTest {
         }
     }
 
-    private static ProblemRuntimeConfig constraintViolationConfig(int status, String title) {
-        ProblemRuntimeConfig config = mock(ProblemRuntimeConfig.class);
-        ProblemRuntimeConfig.ConstraintViolationConfig cvConfig = mock(ProblemRuntimeConfig.ConstraintViolationConfig.class);
+    private static ProblemRuntimeFixedConfig constraintViolationConfig(int status, String title) {
+        ProblemRuntimeFixedConfig config = mock(ProblemRuntimeFixedConfig.class);
+        ProblemRuntimeFixedConfig.ConstraintViolationConfig cvConfig = mock(
+                ProblemRuntimeFixedConfig.ConstraintViolationConfig.class);
         when(config.constraintViolation()).thenReturn(cvConfig);
         when(cvConfig.status()).thenReturn(status);
         when(cvConfig.title()).thenReturn(title);

@@ -10,7 +10,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 
 import io.quarkiverse.httpproblem.ExceptionMapperBase;
 import io.quarkiverse.httpproblem.HttpProblem;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 
 /**
@@ -24,10 +24,11 @@ public final class JsonProcessingExceptionMapper extends ExceptionMapperBase<Jso
     private boolean includeDetails;
 
     public JsonProcessingExceptionMapper() {
+        this.includeDetails = false;
     }
 
     @Inject
-    public JsonProcessingExceptionMapper(PostProcessorsRegistry postProcessorsRegistry, ProblemRuntimeConfig config) {
+    public JsonProcessingExceptionMapper(PostProcessorsRegistry postProcessorsRegistry, ProblemRuntimeFixedConfig config) {
         super(postProcessorsRegistry);
         this.includeDetails = config.includeDetails();
     }

@@ -14,7 +14,7 @@ import org.eclipse.microprofile.openapi.OASFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 import io.quarkiverse.httpproblem.postprocessing.MdcPropertiesInjector;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
@@ -203,7 +203,7 @@ public class ProblemProcessor {
 
     @BuildStep(onlyIf = OpenApiDetector.class)
     void registerOpenApiFilter(BuildProducer<AddToOpenAPIDefinitionBuildItem> openAPIProducer,
-            ProblemBuildConfig config, ProblemRuntimeConfig runtimeConfig) {
+            ProblemBuildConfig config, ProblemRuntimeFixedConfig runtimeConfig) {
         OASFilter filter = new OpenApiProblemFilter(config, runtimeConfig);
         openAPIProducer.produce(new AddToOpenAPIDefinitionBuildItem(filter));
     }

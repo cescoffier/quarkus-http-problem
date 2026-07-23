@@ -10,7 +10,7 @@ import io.smallrye.config.WithName;
 
 @ConfigMapping(prefix = "quarkus.http-problem")
 @ConfigRoot(phase = ConfigPhase.BUILD_AND_RUN_TIME_FIXED)
-public interface ProblemRuntimeConfig {
+public interface ProblemRuntimeFixedConfig {
 
     /**
      * MDC properties that should be included in problem responses.

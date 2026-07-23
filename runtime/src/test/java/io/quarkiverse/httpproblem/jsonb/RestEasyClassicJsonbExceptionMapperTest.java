@@ -13,7 +13,7 @@ import jakarta.ws.rs.core.Response;
 import org.junit.jupiter.api.Test;
 
 import io.quarkiverse.httpproblem.HttpProblem;
-import io.quarkiverse.httpproblem.ProblemRuntimeConfig;
+import io.quarkiverse.httpproblem.ProblemRuntimeFixedConfig;
 import io.quarkiverse.httpproblem.postprocessing.PostProcessorsRegistry;
 import io.quarkiverse.httpproblem.postprocessing.ProblemDefaultsProvider;
 import io.quarkiverse.httpproblem.postprocessing.ProblemLogger;
@@ -67,8 +67,8 @@ class RestEasyClassicJsonbExceptionMapperTest {
                 .hasFieldOrPropertyWithValue("detail", "Something is wrong");
     }
 
-    private static ProblemRuntimeConfig configWith(boolean includeDetails) {
-        ProblemRuntimeConfig config = mock(ProblemRuntimeConfig.class);
+    private static ProblemRuntimeFixedConfig configWith(boolean includeDetails) {
+        ProblemRuntimeFixedConfig config = mock(ProblemRuntimeFixedConfig.class);
         when(config.includeDetails()).thenReturn(includeDetails);
         return config;
     }
